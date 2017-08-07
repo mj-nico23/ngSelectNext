@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -17,6 +18,7 @@ namespace ngSelectNext
     {
         public static List<ITrackingPoint> m_trackList;
 
+        private bool addedCurrentCaret;
         private DTE2 m_dte;
         private IWpfTextView m_textView;
         private IAdornmentLayer m_adornmentLayer;
@@ -25,7 +27,7 @@ namespace ngSelectNext
         public MultiPointEditCommandFilter(IWpfTextView tv)
         {
             m_textView = tv;
-            m_adornmentLayer = tv.GetAdornmentLayer("MultiEditLayer");
+            m_adornmentLayer = tv.GetAdornmentLayer("SelectNextLayer");
             m_dte = Microsoft.VisualStudio.Shell.ServiceProvider.GlobalProvider.GetService(typeof(DTE)) as DTE2;
         }
 
@@ -129,6 +131,7 @@ namespace ngSelectNext
         private void ClearSyncPoints()
         {
             m_trackList.Clear();
+            addedCurrentCaret = false;
             m_adornmentLayer.RemoveAllAdornments();
         }
 
@@ -182,13 +185,20 @@ namespace ngSelectNext
 
             Canvas.SetLeft(rect, geom.Bounds.Left);
             Canvas.SetTop(rect, geom.Bounds.Top);
-            m_adornmentLayer.AddAdornment(AdornmentPositioningBehavior.TextRelative, span, "MultiEditLayer", rect, null);
+            m_adornmentLayer.AddAdornment(AdornmentPositioningBehavior.TextRelative, span, "SelectNextLayer", rect, null);
         }
 
         private int SyncedOperation(ref Guid pguidCmdGroup, uint nCmdID, uint nCmdexecopt, IntPtr pvaIn, IntPtr pvaOut)
         {
             int result = 0;
             ITextCaret caret = m_textView.Caret;
+
+            if (!addedCurrentCaret)
+            {
+                AddSyncPoint(caret.Position);
+                addedCurrentCaret = true;
+            }
+
             var tempTrackList = m_trackList;
             m_trackList = new List<ITrackingPoint>();
 
@@ -203,17 +213,35 @@ namespace ngSelectNext
                 var snapPoint = tempTrackList[i].GetPoint(m_textView.TextSnapshot);
                 caret.MoveTo(snapPoint);
 
-                if (deleteSelection)
+                using (var edit = m_textView.TextSnapshot.TextBuffer.CreateEdit())
                 {
-                    using (var edit = m_textView.TextSnapshot.TextBuffer.CreateEdit())
+                    bool applyEdit = false;
+                    if (deleteSelection)
                     {
                         edit.Delete(caret.Position.BufferPosition.Position - currentSelection.Length, currentSelection.Length);
-                        edit.Apply();
+                        applyEdit = true;
                     }
+
+                    if (nCmdID == (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
+                    {
+                        var typedChar = (char)(ushort)Marshal.GetObjectForNativeVariant(pvaIn);
+                        edit.Insert(tempTrackList[i].GetPosition(m_textView.TextSnapshot), typedChar.ToString());
+                        applyEdit = true;
+                    }
+
+                    if (applyEdit)
+                        edit.Apply();
+                   
                 }
 
+                if (nCmdID != (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
+                {
+                    result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                }
+
+
                 Debug.Print("Caret #" + i + " pos : " + caret.Position);
-                result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                //result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                 AddSyncPoint(m_textView.Caret.Position);
             }
 

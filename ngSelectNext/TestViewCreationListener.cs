@@ -14,6 +14,11 @@ namespace ngSelectNext
     [TextViewRole(PredefinedTextViewRoles.Document)]
     internal class TestViewCreationListener : IVsTextViewCreationListener
     {
+        [Export(typeof(AdornmentLayerDefinition))]
+        [Name("SelectNextLayer")]
+        [TextViewRole(PredefinedTextViewRoles.Editable)]
+        internal AdornmentLayerDefinition multiEditAdornmentLayer;
+
         [Import]
         internal IEditorFormatMapService FormatMapService;
 
