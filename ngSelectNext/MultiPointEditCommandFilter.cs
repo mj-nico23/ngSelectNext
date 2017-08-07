@@ -216,7 +216,7 @@ namespace ngSelectNext
                 using (var edit = m_textView.TextSnapshot.TextBuffer.CreateEdit())
                 {
                     bool applyEdit = false;
-                    if (deleteSelection) //TODO Not double deletes on current selection
+                    if (deleteSelection)
                     {
                         edit.Delete(caret.Position.BufferPosition.Position - currentSelection.Length, currentSelection.Length);
                         applyEdit = true;

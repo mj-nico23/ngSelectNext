@@ -56,6 +56,8 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SelectNextCommand.cs" />
     <Compile Include="SelectNextCommandPackage.cs" />
+    <Compile Include="SelectNextTextAdornment.cs" />
+    <Compile Include="SelectNextTextAdornmentTextViewCreationListener.cs" />
     <Compile Include="TestViewCreationListener.cs" />
   </ItemGroup>
   <ItemGroup>

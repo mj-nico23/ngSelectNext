@@ -100,6 +100,10 @@ namespace ngSelectNext
 
                 MultiPointEditCommandFilter.m_trackList.Add(curTrackPoint);
 
+                var ador = new SelectNextTextAdornment(textview);
+
+                ador.CreateVisuals(null);
+
                 SnapshotSpan sp = new SnapshotSpan(snapshot, intNext, currentSelection.Length);
                 textview.Selection.Select(sp, false);
             }
