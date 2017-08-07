@@ -102,7 +102,7 @@ namespace ngSelectNext
 
                 var ador = new SelectNextTextAdornment(textview);
 
-                ador.CreateVisuals(null);
+                ador.CreateVisuals();
 
                 SnapshotSpan sp = new SnapshotSpan(snapshot, intNext, currentSelection.Length);
                 textview.Selection.Select(sp, false);
