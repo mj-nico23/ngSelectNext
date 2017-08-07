@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -100,8 +97,6 @@ namespace ngSelectNext
                         if (m_trackList.Count > 0)
                             return SyncedOperation(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                         break;
-                    default:
-                        break;
                 }
             }
             else if (pguidCmdGroup == VSConstants.GUID_VSStandardCommandSet97)
@@ -114,8 +109,6 @@ namespace ngSelectNext
                         if (m_trackList.Count > 0)
                             return SyncedOperation(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                         break;
-                    default:
-                        break;
                 }
             }
 
@@ -127,8 +120,6 @@ namespace ngSelectNext
                 case ((uint)VSConstants.VSStd2KCmdID.CANCEL):
                     ClearSyncPoints();
                     RedrawScreen();
-                    break;
-                default:
                     break;
             }
 
@@ -201,8 +192,6 @@ namespace ngSelectNext
             var tempTrackList = m_trackList;
             m_trackList = new List<ITrackingPoint>();
 
-            SnapshotPoint snapPoint = tempTrackList[0].GetPoint(m_textView.TextSnapshot);
-
             m_dte.UndoContext.Open("Select Next edit");
 
             bool deleteSelection = !m_textView.Selection.IsEmpty;
@@ -211,7 +200,7 @@ namespace ngSelectNext
 
             for (int i = 0; i < tempTrackList.Count; i++)
             {
-                snapPoint = tempTrackList[i].GetPoint(m_textView.TextSnapshot);
+                var snapPoint = tempTrackList[i].GetPoint(m_textView.TextSnapshot);
                 caret.MoveTo(snapPoint);
 
                 if (deleteSelection)
@@ -254,11 +243,6 @@ namespace ngSelectNext
             {
                 m_textView.Caret.MoveTo(curTrackPoint.GetPoint(m_textView.TextSnapshot));
             }
-        }
-
-        private void AddSyncPoint(int position)
-        {
-            m_trackList.Add(m_textView.TextSnapshot.CreateTrackingPoint(Math.Max(position, 0), PointTrackingMode.Positive));
         }
 
         internal bool Added { get; set; }

@@ -26,11 +26,11 @@ namespace ngSelectNext
         {
             this.package = package ?? throw new ArgumentNullException(nameof(package));
 
-            OleMenuCommandService commandService = this.ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            OleMenuCommandService commandService = ServiceProvider.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if (commandService != null)
             {
                 var menuCommandID = new CommandID(CommandSet, CommandId);
-                var menuItem = new MenuCommand(this.MenuItemCallback, menuCommandID);
+                var menuItem = new MenuCommand(MenuItemCallback, menuCommandID);
                 commandService.AddCommand(menuItem);
 
             }
@@ -42,11 +42,11 @@ namespace ngSelectNext
             private set;
         }
 
-        private System.IServiceProvider ServiceProvider
+        private IServiceProvider ServiceProvider
         {
             get
             {
-                return this.package;
+                return package;
             }
         }
 

@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel.Composition;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.ComponentModel.Composition;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.OLE.Interop;
@@ -20,10 +15,10 @@ namespace ngSelectNext
     internal class TestViewCreationListener : IVsTextViewCreationListener
     {
         [Import]
-        internal IEditorFormatMapService FormatMapService = null;
+        internal IEditorFormatMapService FormatMapService;
 
         [Import(typeof(IVsEditorAdaptersFactoryService))]
-        internal IVsEditorAdaptersFactoryService editorFactory = null;
+        internal IVsEditorAdaptersFactoryService editorFactory;
 
         public void VsTextViewCreated(IVsTextView textViewAdapter)
         {

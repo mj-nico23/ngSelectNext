@@ -1,5 +1,4 @@
-﻿using System;
-using Microsoft.VisualStudio.Editor;
+﻿using Microsoft.VisualStudio.Editor;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Text.Editor;
 using Microsoft.VisualStudio.TextManager.Interop;
@@ -22,7 +21,7 @@ namespace ngSelectNext
         {
             var textManager = (IVsTextManager)ServiceProvider.GlobalProvider.GetService(typeof(SVsTextManager));
 
-            IVsTextView activeView = null;
+            IVsTextView activeView;
             textManager.GetActiveView(1, null, out activeView);
             return activeView;
         }
