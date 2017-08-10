@@ -1,10 +1,4 @@
-﻿//------------------------------------------------------------------------------
-// <copyright file="SelectNextCommand.cs" company="Company">
-//     Copyright (c) Company.  All rights reserved.
-// </copyright>
-//------------------------------------------------------------------------------
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
 using System.Diagnostics;
@@ -16,7 +10,9 @@ namespace ngSelectNext
 {
     internal sealed class SelectNextCommand
     {
+        public static SelectNextTextAdornment adornment;
         public const int CommandId = 0x0100;
+        public const int SkipCommandId = 0x0105;
 
         public static readonly Guid CommandSet = new Guid("8cfe5bed-9dd1-4111-bdfb-708bef268c4f");
 
@@ -32,6 +28,10 @@ namespace ngSelectNext
                 var menuCommandID = new CommandID(CommandSet, CommandId);
                 var menuItem = new MenuCommand(MenuItemCallback, menuCommandID);
                 commandService.AddCommand(menuItem);
+
+                var menuSkipCommandID = new CommandID(CommandSet, SkipCommandId);
+                var menuSkipItem = new MenuCommand(MenuItemCallback, menuSkipCommandID);
+                commandService.AddCommand(menuSkipItem);
 
             }
         }
@@ -58,6 +58,13 @@ namespace ngSelectNext
 
         private void MenuItemCallback(object sender, EventArgs e)
         {
+            bool skip_next = false;
+
+            MenuCommand obj_sender = (MenuCommand)sender;
+
+            if (obj_sender.CommandID.ID == SkipCommandId)
+                skip_next = true;
+
             IWpfTextView textview = Helpers.GetCurentTextView();
 
             if (textview == null)
@@ -76,10 +83,12 @@ namespace ngSelectNext
                 return;
             }
 
-            if (MultiPointEditCommandFilter.m_trackList == null)
-                MultiPointEditCommandFilter.m_trackList = new List<ITrackingPoint>();
+            if (SelectNextCommandFilter.m_trackList == null)
+                SelectNextCommandFilter.m_trackList = new List<ITrackingPoint>();
 
             ITextSelection selection = textview.Selection;
+
+            PointTrackingMode trackingMode = selection.IsReversed ? PointTrackingMode.Negative : PointTrackingMode.Positive;
 
             //MultiPointEditCommandFilter.SelectionsMade.Add(selection);
 
@@ -90,31 +99,45 @@ namespace ngSelectNext
             var intNext = snapshot.GetText()
                 .IndexOf(
                     currentSelection,
-                    textview.Selection.Start.Position + currentSelection.Length - 1);
+                    textview.Selection.Start.Position.Position + currentSelection.Length, StringComparison.Ordinal);
+
+            if (intNext == -1)
+            {
+                intNext = snapshot.GetText().IndexOf(currentSelection, 0, StringComparison.Ordinal);
+            }
 
             if (intNext > -1)
             {
-                var curPosition = textview.Caret.Position;
+                if (!skip_next)
+                {
+                    var curPosition = textview.Caret.Position;
 
-                var curTrackPoint = textview.TextSnapshot.CreateTrackingPoint(curPosition.BufferPosition.Position, PointTrackingMode.Positive);
+                    var curTrackPoint = textview.TextSnapshot.CreateTrackingPoint(curPosition.BufferPosition.Position,
+                        trackingMode);
 
-                MultiPointEditCommandFilter.m_trackList.Add(curTrackPoint);
+                    SelectNextCommandFilter.m_trackList.RemoveAll(
+                        point => point.GetPosition(snapshot) == curTrackPoint.GetPosition(snapshot));
 
-                var ador = new SelectNextTextAdornment(textview);
+                    SelectNextCommandFilter.m_trackList.Add(curTrackPoint);
 
-                ador.CreateVisuals();
+                    if (adornment == null)
+                        adornment = new SelectNextTextAdornment(textview);
+
+                    adornment.CreateVisuals();
+                }
 
                 SnapshotSpan sp = new SnapshotSpan(snapshot, intNext, currentSelection.Length);
                 textview.Selection.Select(sp, false);
             }
 
             var initActive = textview.Selection.ActivePoint;
+
+            SelectNextCommandFilter.m_trackList.RemoveAll(point => point.GetPosition(snapshot) == initActive.Position.Position);
             //var newAnchor = initAnchor.TranslateTo(textview.TextSnapshot, PointTrackingMode.Negative);
             var newActive = initActive.TranslateTo(textview.TextSnapshot, PointTrackingMode.Negative);
             //textview.Selection.Select(newAnchor, newActive);
             textview.Caret.MoveTo(newActive, PositionAffinity.Predecessor);
         }
-
 
     }
 }

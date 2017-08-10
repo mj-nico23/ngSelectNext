@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -14,20 +15,20 @@ using Microsoft.VisualStudio.Text.Editor;
 
 namespace ngSelectNext
 {
-    internal class MultiPointEditCommandFilter : IOleCommandTarget
+    internal class SelectNextCommandFilter : IOleCommandTarget
     {
         public static List<ITrackingPoint> m_trackList;
 
-        private bool addedCurrentCaret;
+        private static bool addedCurrentCaret;
         private DTE2 m_dte;
-        private IWpfTextView m_textView;
-        private IAdornmentLayer m_adornmentLayer;
+        private static IWpfTextView m_textView;
+        public static IAdornmentLayer m_adornmentLayer;
         private Dictionary<string, int> positionHash = new Dictionary<string, int>();
 
-        public MultiPointEditCommandFilter(IWpfTextView tv)
+        public SelectNextCommandFilter(IWpfTextView tv)
         {
             m_textView = tv;
-            m_adornmentLayer = tv.GetAdornmentLayer("SelectNextLayer");
+            m_adornmentLayer = tv.GetAdornmentLayer("SelectNextTextAdornment");
             m_dte = Microsoft.VisualStudio.Shell.ServiceProvider.GlobalProvider.GetService(typeof(DTE)) as DTE2;
         }
 
@@ -96,7 +97,7 @@ namespace ngSelectNext
                     case ((uint)VSConstants.VSStd2KCmdID.WORDNEXT):
 
 
-                        if (m_trackList.Count > 0)
+                        if (m_trackList?.Count > 0)
                             return SyncedOperation(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                         break;
                 }
@@ -108,7 +109,7 @@ namespace ngSelectNext
 
                     case ((uint)VSConstants.VSStd97CmdID.Delete):
                     case ((uint)VSConstants.VSStd97CmdID.Paste):
-                        if (m_trackList.Count > 0)
+                        if (m_trackList?.Count > 0)
                             return SyncedOperation(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                         break;
                 }
@@ -128,9 +129,9 @@ namespace ngSelectNext
             return NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
         }
 
-        private void ClearSyncPoints()
+        public static void ClearSyncPoints()
         {
-            m_trackList.Clear();
+            m_trackList?.Clear();
             addedCurrentCaret = false;
             m_adornmentLayer.RemoveAllAdornments();
         }
@@ -180,7 +181,7 @@ namespace ngSelectNext
                 Fill = brush,
                 Width = drawing.Bounds.Width / 6,
                 Height = drawing.Bounds.Height - 4,
-                Margin = new System.Windows.Thickness(0, 2, 0, 0),
+                Margin = new Thickness(0, 2, 0, 0),
             };
 
             Canvas.SetLeft(rect, geom.Bounds.Left);
@@ -210,6 +211,7 @@ namespace ngSelectNext
 
             for (int i = 0; i < tempTrackList.Count; i++)
             {
+                var trackingMode = tempTrackList[i].TrackingMode;
                 var snapPoint = tempTrackList[i].GetPoint(m_textView.TextSnapshot);
                 caret.MoveTo(snapPoint);
 
@@ -218,30 +220,63 @@ namespace ngSelectNext
                     bool applyEdit = false;
                     if (deleteSelection)
                     {
-                        edit.Delete(caret.Position.BufferPosition.Position - currentSelection.Length, currentSelection.Length);
+                        if (trackingMode == PointTrackingMode.Negative)
+                            edit.Delete(caret.Position.BufferPosition.Position, currentSelection.Length);
+                        else
+                            edit.Delete(caret.Position.BufferPosition.Position - currentSelection.Length, currentSelection.Length);
                         applyEdit = true;
                     }
 
-                    if (nCmdID == (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
+                    switch (nCmdID)
                     {
-                        var typedChar = (char)(ushort)Marshal.GetObjectForNativeVariant(pvaIn);
-                        edit.Insert(tempTrackList[i].GetPosition(m_textView.TextSnapshot), typedChar.ToString());
-                        applyEdit = true;
+                        case (uint)VSConstants.VSStd2KCmdID.TYPECHAR:
+
+                            var typedChar = (char)(ushort)Marshal.GetObjectForNativeVariant(pvaIn);
+                            edit.Insert(tempTrackList[i].GetPosition(m_textView.TextSnapshot), typedChar.ToString());
+                            applyEdit = true;
+                            break;
+                        case ((uint)VSConstants.VSStd97CmdID.Delete):
+                            if (i < tempTrackList.Count - 1 && deleteSelection)
+                            {
+                                edit.Insert(tempTrackList[i].GetPosition(m_textView.TextSnapshot), "");
+                            }
+                            break;
+                        case ((uint)VSConstants.VSStd97CmdID.Paste):
+                            if (i < tempTrackList.Count - 1)
+                            {
+                                var pasteString = Clipboard.GetText();
+                                edit.Insert(tempTrackList[i].GetPosition(m_textView.TextSnapshot), pasteString);
+                                applyEdit = true;
+                            }
+                            break;
                     }
 
                     if (applyEdit)
                         edit.Apply();
-                   
+
                 }
 
-                if (nCmdID != (uint)VSConstants.VSStd2KCmdID.TYPECHAR)
+
+                switch (nCmdID)
                 {
-                    result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                    case ((uint)VSConstants.VSStd2KCmdID.TYPECHAR):
+                        break;
+                    case ((uint)VSConstants.VSStd97CmdID.Delete):
+                        if (!deleteSelection)
+                            result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                        break;
+                    case ((uint)VSConstants.VSStd97CmdID.Paste):
+                        if (i == tempTrackList.Count - 1)
+                        {
+                            result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                        }
+                        break;
+                    default:
+                        result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
+                        break;
                 }
 
 
-                Debug.Print("Caret #" + i + " pos : " + caret.Position);
-                //result = NextTarget.Exec(ref pguidCmdGroup, nCmdID, nCmdexecopt, pvaIn, pvaOut);
                 AddSyncPoint(m_textView.Caret.Position);
             }
 

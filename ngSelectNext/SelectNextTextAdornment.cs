@@ -46,16 +46,32 @@ namespace ngSelectNext
 
         public void CreateVisuals()
         {
+            layer.RemoveAllAdornments();
+
             IWpfTextViewLineCollection textViewLines = this.view.TextViewLines;
 
-            if (MultiPointEditCommandFilter.m_trackList == null) return;
+            if (SelectNextCommandFilter.m_trackList == null) return;
 
             string currentSelection = view.Selection.SelectedSpans[view.Selection.SelectedSpans.Count - 1].GetText();
 
-            for (int i = 0; i < MultiPointEditCommandFilter.m_trackList.Count; i++)
+            for (int i = 0; i < SelectNextCommandFilter.m_trackList.Count; i++)
             {
-                int position = MultiPointEditCommandFilter.m_trackList[i].GetPosition(view.TextSnapshot);
-                SnapshotSpan span = new SnapshotSpan(this.view.TextSnapshot, Span.FromBounds(position - currentSelection.Length, position));
+                int position = SelectNextCommandFilter.m_trackList[i].GetPosition(view.TextSnapshot);
+                var trackingMode = SelectNextCommandFilter.m_trackList[i].TrackingMode;
+
+                int start, end;
+                if (trackingMode == PointTrackingMode.Negative)
+                {
+                    start = position;
+                    end = position + currentSelection.Length;
+                }
+                else
+                {
+                    start = position - currentSelection.Length;
+                    end = position;
+                }
+
+                SnapshotSpan span = new SnapshotSpan(this.view.TextSnapshot, Span.FromBounds(start, end));
                 Geometry geometry = textViewLines.GetMarkerGeometry(span);
                 if (geometry != null)
                 {

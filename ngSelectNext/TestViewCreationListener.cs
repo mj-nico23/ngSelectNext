@@ -30,10 +30,10 @@ namespace ngSelectNext
             IWpfTextView textView = editorFactory.GetWpfTextView(textViewAdapter);
 
             if (textView != null)
-                AddCommandFilter(textViewAdapter, textView, new MultiPointEditCommandFilter(textView));
+                AddCommandFilter(textViewAdapter, textView, new SelectNextCommandFilter(textView));
         }
 
-        private void AddCommandFilter(IVsTextView viewAdapter, IWpfTextView textView, MultiPointEditCommandFilter commandFilter)
+        private void AddCommandFilter(IVsTextView viewAdapter, IWpfTextView textView, SelectNextCommandFilter commandFilter)
         {
             if (commandFilter.Added == false)
             {
